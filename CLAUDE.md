@@ -1,0 +1,1 @@
+基于 Quartz + markdown 的个人博客，你只需要在 ./content 目录编辑，然后 commit 就会触发 github action 的部署，博客就会更新
