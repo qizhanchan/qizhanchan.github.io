@@ -11,7 +11,7 @@ tags:
 
 ## 背景
 
-Deletion 讨论的是：当客户注销、合同终止、数据主体提出删除请求时，系统如何把相关数据从所有存储介质中删除。如果有税务、款项迟滞客户需要单独处理
+Deletion 讨论的是：当客户注销、合同终止、数据主体提出删除请求时，系统如何把相关数据从所有存储介质中删除。如果有税务、款项迟滞客户则需要单独处理
 
 这件事比看起来难很多。一个成熟的 SaaS 系统里，数据通常散落在：
 
@@ -117,6 +117,8 @@ RESTORED
 - 失败原因；
 - 审计证据。
 
+状态机的下一步都必须检查上一步存在并且成功，有任何异常都需要人工介入确认和处理
+
 ## 存储介质清单
 
 删除管线最重要的输入之一，是完整的数据存储清单。
@@ -125,10 +127,10 @@ RESTORED
 
 | 存储介质 | 示例 | 删除方式 | 难点 |
 |---------|------|----------|------|
-| OLTP DB | PostgreSQL / MySQL | 按 tenant key 删除或脱敏 | 外键、事务、性能、分批 |
+| OLTP DB | PostgreSQL / MySQL | 按 key 删除或脱敏 | 外键、事务、性能、分批 |
 | NoSQL | DynamoDB / MongoDB | 按 partition key 扫描删除 | 二级索引和历史版本 |
 | Cache | Redis | 删除 key prefix | key 命名不统一 |
-| Object Storage | S3 / GCS | 删除对象或生命周期规则 | 文件路径是否包含 tenant id |
+| Object Storage | S3 / GCS | 删除对象或生命周期规则 | 文件路径是否包含 id |
 | Search Index | Elasticsearch / OpenSearch | delete by query / 重建索引 | 索引副本和异步刷新 |
 | Data Warehouse | ClickHouse / BigQuery | 分区删除、重写表、脱敏 | 明细表和聚合表传播 |
 | Logs | ELK / Loki / Cloud Logging | retention 到期淘汰或定向删除 | 日志里不应写入 PII |
@@ -143,7 +145,7 @@ RESTORED
 
 常见做法：
 
-- 按 tenant / shop 分批删除，避免大事务；
+- 按 shop 分批删除，避免大事务；
 - 先停止写入和后台任务，防止删除过程中产生新数据；
 - 删除前生成 dry-run 统计，确认影响行数；
 - 按依赖顺序删除子表，再删除主表；
@@ -195,7 +197,7 @@ WHERE shop_id = :shop_id
 1. 客户或 CS 发起恢复请求；
 2. 校验是否仍在恢复窗口内；
 3. 校验是否有 legal / billing / abuse 风险；
-4. 恢复 tenant 状态、配置、授权和后台任务；
+4. 恢复状态、配置、授权和后台任务；
 5. 重新建立索引、缓存和调度任务；
 6. 执行数据一致性检查；
 7. 通知客户恢复完成。
